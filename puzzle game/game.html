@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic 15 Puzzle</title>
+    <style>
+        /* --- CSS STYLES --- */
+
+        :root {
+            --tile-size: 80px;
+            --gap-size: 5px;
+            --bg-color: #f0f2f5;
+            --board-bg: #bbada0;
+            --tile-color: #eee4da;
+            --tile-text: #776e65;
+            --correct-color: #edc22e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #8f7a66;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #7f6a56;
+        }
+
+        /* Game Board Container */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: var(--gap-size);
+            background-color: var(--board-bg);
+            padding: var(--gap-size);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            /* Responsive sizing */
+            width: calc(4 * var(--tile-size) + 5 * var(--gap-size));
+            height: calc(4 * var(--tile-size) + 5 * var(--gap-size));
+        }
+
+        /* Individual Tiles */
+        .tile {
+            background-color: var(--tile-color);
+            color: var(--tile-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s ease-in-out, background-color 0.2s;
+        }
+
+        .tile:hover {
+            filter: brightness(0.95);
+        }
+
+        /* The 'Empty' tile - make it invisible */
+        .tile.empty {
+            background-color: transparent;
+            cursor: default;
+            border: none;
+        }
+
+        /* Victory Message Overlay */
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            color: green;
+            height: 24px;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 450px) {
+            :root {
+                --tile-size: 18vw; /* Resize based on viewport width */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>15 Puzzle</h1>
+    
+    <div class="controls">
+        <button onclick="startGame()">New Game (Shuffle)</button>
+    </div>
+
+    <div id="game-board">
+        </div>
+
+    <div id="message"></div>
+
+    <script>
+        /* --- JAVASCRIPT LOGIC --- */
+
+        // Configuration
+        const gridSize = 4;
+        const totalTiles = gridSize * gridSize;
+        const boardElement = document.getElementById('game-board');
+        const messageElement = document.getElementById('message');
+        
+        // Game State: array representing the grid. 
+        // Numbers 1-15 represent tiles, 0 represents the empty space.
+        let tiles = [];
+
+        /**
+         * Initialize the game logic
+         */
+        function init() {
+            // Create the solved state: [1, 2, ..., 15, 0]
+            tiles = Array.from({length: totalTiles}, (_, i) => (i + 1) % totalTiles);
+            renderBoard();
+        }
+
+        /**
+         * Renders the grid based on the 'tiles' array state.
+         * Clears the board and recreates DOM elements.
+         */
+        function renderBoard() {
+            boardElement.innerHTML = ''; // Clear current board
+
+            tiles.forEach((number, index) => {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                
+                if (number === 0) {
+                    // This is the empty space
+                    tile.classList.add('empty');
+                    tile.textContent = ''; 
+                } else {
+                    tile.textContent = number;
+                    // Add click event listener to valid tiles
+                    tile.addEventListener('click', () => handleTileClick(index));
+                }
+
+                boardElement.appendChild(tile);
+            });
+        }
+
+        /**
+         * Starts a new game by shuffling the board.
+         * Uses simulation of random moves to ensure solvability.
+         */
+        function startGame() {
+            messageElement.textContent = '';
+            
+            // Start from solved state
+            tiles = Array.from({length: totalTiles}, (_, i) => (i + 1) % totalTiles);
+            
+            // Perform a large number of random valid moves to shuffle
+            // This guarantees the result is mathematically solvable.
+            let emptyIndex = tiles.indexOf(0);
+            let previousIndex = -1; // Avoid immediate backtracking for better shuffling
+
+            for (let i = 0; i < 1000; i++) {
+                const neighbors = getNeighbors(emptyIndex);
+                // Filter out the tile we just moved from to encourage mixing
+                const validNeighbors = neighbors.filter(n => n !== previousIndex);
+                
+                // Pick a random neighbor
+                const randomNeighbor = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+                
+                // Swap
+                [tiles[emptyIndex], tiles[randomNeighbor]] = [tiles[randomNeighbor], tiles[emptyIndex]];
+                
+                previousIndex = emptyIndex;
+                emptyIndex = randomNeighbor;
+            }
+
+            renderBoard();
+        }
+
+        /**
+         * Handles user interaction when a tile is clicked.
+         * @param {number} index - The index of the clicked tile in the array.
+         */
+        function handleTileClick(index) {
+            const emptyIndex = tiles.indexOf(0);
+
+            if (isAdjacent(index, emptyIndex)) {
+                swapTiles(index, emptyIndex);
+                renderBoard();
+                checkWin();
+            }
+        }
+
+        /**
+         * Checks if two indices are adjacent in the 4x4 grid.
+         * @param {number} idx1 
+         * @param {number} idx2 
+         * @returns {boolean}
+         */
+        function isAdjacent(idx1, idx2) {
+            const row1 = Math.floor(idx1 / gridSize);
+            const col1 = idx1 % gridSize;
+            const row2 = Math.floor(idx2 / gridSize);
+            const col2 = idx2 % gridSize;
+
+            // Adjacent if distance is exactly 1
+            const distance = Math.abs(row1 - row2) + Math.abs(col1 - col2);
+            return distance === 1;
+        }
+
+        /**
+         * Helper to get indices of adjacent tiles for the shuffle algorithm.
+         * @param {number} index 
+         * @returns {number[]} Array of valid neighbor indices.
+         */
+        function getNeighbors(index) {
+            const row = Math.floor(index / gridSize);
+            const col = index % gridSize;
+            const neighbors = [];
+
+            if (row > 0) neighbors.push(index - gridSize); // Up
+            if (row < gridSize - 1) neighbors.push(index + gridSize); // Down
+            if (col > 0) neighbors.push(index - 1); // Left
+            if (col < gridSize - 1) neighbors.push(index + 1); // Right
+
+            return neighbors;
+        }
+
+        /**
+         * Swaps two values in the state array.
+         */
+        function swapTiles(idx1, idx2) {
+            [tiles[idx1], tiles[idx2]] = [tiles[idx2], tiles[idx1]];
+        }
+
+        /**
+         * Checks if the current state matches the winning condition.
+         * Winning condition: [1, 2, ..., 15, 0]
+         */
+        function checkWin() {
+            // Check if every tile (except the last one) is in order
+            // We only need to check the first 15; if they are right, 0 is in the last spot.
+            for (let i = 0; i < totalTiles - 1; i++) {
+                if (tiles[i] !== i + 1) return;
+            }
+
+            // If we get here, the puzzle is solved
+            messageElement.textContent = "🎉 Puzzle Solved! Great job! 🎉";
+        }
+
+        // Initialize on load
+        init();
+        // Automatically start a shuffled game on load (optional)
+        startGame();
+
+    </script>
+</body>
+</html>
