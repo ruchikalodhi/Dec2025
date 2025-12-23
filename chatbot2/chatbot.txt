@@ -1,0 +1,7 @@
+Hello! I am Robo.
+I am a chatbot designed to answer questions.
+A chatbot is a computer program that simulates human conversation.
+Chatbots are used in customer support, education, and healthcare.
+They can understand text and reply automatically.
+What's up means asking how someone is doing.
+ABC is a placeholder term often used in examples.
